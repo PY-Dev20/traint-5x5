@@ -1,0 +1,6 @@
+traint-5x5/
+venv/
+.env
+node_modules/
+dist/
+__pycache__/
