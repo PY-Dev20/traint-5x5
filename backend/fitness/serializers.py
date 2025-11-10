@@ -1,3 +1,4 @@
+# backend/fitness/serializers.py
 from rest_framework import serializers
 from .models import Exercise
 
@@ -6,20 +7,14 @@ class ExerciseSerializer(serializers.ModelSerializer):
         model = Exercise
         fields = [
             'id', 'name', 'description', 'instructions',
-            'category', 'difficulty', 'demo_video_url', 'target_muscles'
+            'category', 'difficulty', 'demo_video_url', 'target_muscles',
+            'main_muscle', 'equipment', 'mechanics'
         ]
 
     def to_representation(self, instance):
-        # Get requested language from context (passed from view)
         lang = self.context.get('lang', 'en')
         data = super().to_representation(instance)
-
-        # Extract localized values
-        data['name'] = instance.name.get(lang, instance.name.get('en', ''))
-        data['description'] = instance.description.get(lang, instance.description.get('en', ''))
-        data['category'] = instance.category.get(lang, instance.category.get('en', ''))
-        data['instructions'] = instance.instructions.get(lang, instance.instructions.get('en', []))
-
+        for field in ['name', 'description', 'category', 'instructions']:
+            if field in data:
+                data[field] = getattr(instance, field, {}).get(lang, getattr(instance, field, {}).get('en', ''))
         return data
-    
-    
