@@ -7,13 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
+import * as React from 'react';
 
-export default function LoginPage({ params }: { params: { lang: string } }) {
-  const { lang } = params;
+export default function LoginPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = React.use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true); // Toggle between login/signup
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -24,8 +27,12 @@ export default function LoginPage({ params }: { params: { lang: string } }) {
     setLoading(true);
     setError('');
 
+    const url = isLogin
+      ? 'http://localhost:8000/api/token/'
+      : 'http://localhost:8000/api/register/'; // We'll create this endpoint
+
     try {
-      const res = await fetch('http://localhost:8000/api/token/', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -33,16 +40,15 @@ export default function LoginPage({ params }: { params: { lang: string } }) {
 
       if (res.ok) {
         const data = await res.json();
-        // Save tokens to localStorage
-        localStorage.setItem('access_token', data.access);
-        localStorage.setItem('refresh_token', data.refresh);
-        
-        // Redirect to dashboard or intended page
+        localStorage.setItem('access_token', data.access || data.token);
+        localStorage.setItem('refresh_token', data.refresh || '');
+        localStorage.setItem('user_email', email);
+
         const next = searchParams.get('next') || `/${lang}/dashboard`;
         router.push(next);
       } else {
         const err = await res.json();
-        setError(err.detail || (err.email?.[0] || err.password?.[0] || 'Invalid credentials'));
+        setError(err.detail || err.email?.[0] || err.password?.[0] || 'Invalid credentials');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -56,7 +62,9 @@ export default function LoginPage({ params }: { params: { lang: string } }) {
       <Card>
         <CardHeader>
           <CardTitle className={isArabic ? 'text-right' : 'text-left'}>
-            {isArabic ? 'تسجيل الدخول' : lang === 'fr' ? 'Connexion' : 'Login'}
+            {isLogin
+              ? isArabic ? 'تسجيل الدخول' : 'Login'
+              : isArabic ? 'إنشاء حساب' : 'Sign Up'}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -69,7 +77,7 @@ export default function LoginPage({ params }: { params: { lang: string } }) {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="email">
-                  {isArabic ? 'البريد الإلكتروني' : lang === 'fr' ? 'Email' : 'Email'}
+                  {isArabic ? 'البريد الإلكتروني' : 'Email'}
                 </Label>
                 <Input
                   id="email"
@@ -81,7 +89,7 @@ export default function LoginPage({ params }: { params: { lang: string } }) {
               </div>
               <div>
                 <Label htmlFor="password">
-                  {isArabic ? 'كلمة المرور' : lang === 'fr' ? 'Mot de passe' : 'Password'}
+                  {isArabic ? 'كلمة المرور' : 'Password'}
                 </Label>
                 <Input
                   id="password"
@@ -92,10 +100,30 @@ export default function LoginPage({ params }: { params: { lang: string } }) {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (isArabic ? 'جاري التحميل...' : 'Loading...') : isArabic ? 'تسجيل الدخول' : 'Login'}
+                {loading
+                  ? isArabic ? 'جاري التحميل...' : 'Loading...'
+                  : isLogin
+                  ? isArabic ? 'تسجيل الدخول' : 'Login'
+                  : isArabic ? 'إنشاء حساب' : 'Sign Up'}
               </Button>
             </div>
           </form>
+
+          <div className="mt-4 text-center">
+            <Button
+              variant="link"
+              onClick={() => setIsLogin(!isLogin)}
+              className="p-0 h-auto text-sm"
+            >
+              {isLogin
+                ? isArabic
+                  ? 'ليس لديك حساب؟ سجل الآن'
+                  : 'Don’t have an account? Sign up'
+                : isArabic
+                ? 'لديك حساب؟ سجل الدخول'
+                : 'Already have an account? Login'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

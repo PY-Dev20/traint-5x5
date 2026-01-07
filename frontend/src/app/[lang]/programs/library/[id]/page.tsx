@@ -1,22 +1,10 @@
 // frontend/src/app/[lang]/programs/library/[id]/page.tsx
-import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, User } from 'lucide-react';
+import { CheckCircle, Clock, Dumbbell, Target, Users } from 'lucide-react';
 import Link from 'next/link';
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ lang: string; id: string }>;
-}): Promise<Metadata> {
-  const { lang, id } = await params;
-  // In real app, fetch program title from API
-  const title = lang === 'ar' ? `خطة التمرين #${id}` : `Workout Plan #${id}`;
-  return { title };
-}
 
 export default async function ProgramDetailPage({
   params,
@@ -26,118 +14,135 @@ export default async function ProgramDetailPage({
   const { lang, id } = await params;
   const isArabic = lang === 'ar';
 
-  // Fetch program from Django API
-  const res = await fetch(`http://localhost:8000/api/programs/${id}/?lang=${lang}`, {
-    next: { revalidate: 3600 }, // ISR: revalidate every hour
-  });
-
-  if (!res.ok) {
-    notFound(); // 404 if program not found
-  }
-
+  // Fetch program with full structure
+  const res = await fetch(
+    `http://localhost:8000/api/programs/${id}/?lang=${lang}`,
+    { next: { revalidate: 3600 } }
+  );
+  if (!res.ok) return notFound();
   const program = await res.json();
 
-  // Mock user plan creation (replace with real API call)
-  const handleAddToPlan = async () => {
-  const token = typeof window !== 'undefined' 
-    ? localStorage.getItem('access_token') 
-    : null;
-
-  if (!token) {
-    // Redirect to login if not authenticated
-    window.location.href = `/${lang}/login`;
-    return;
-  }
-
-  try {
-    const response = await fetch('http://localhost:8000/api/user-plans/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        program_id: program.id,
-      }),
-    });
-
-    if (response.ok) {
-      alert(lang === 'ar' ? 'تمت إضافة الخطة إلى حسابك!' : 'Plan added to your account!');
-    } else {
-      const error = await response.json();
-      alert(lang === 'ar' ? 'فشل في الإضافة: ' + JSON.stringify(error) : 'Failed to add plan: ' + JSON.stringify(error));
-    }
-  } catch (error) {
-    console.error('Error adding plan:', error);
-    alert(lang === 'ar' ? 'حدث خطأ. تحقق من الاتصال.' : 'An error occurred. Please check your connection.');
-  }
-};
+  const goalMap: Record<string, string> = {
+    muscle_gain: isArabic ? 'بناء العضلات' : 'Muscle Gain',
+    fat_loss: isArabic ? 'حرق الدهون' : 'Fat Loss',
+    strength: isArabic ? 'زيادة القوة' : 'Strength',
+    full_body: isArabic ? 'تمارين الجسم كله' : 'Full Body',
+  };
 
   return (
     <div className="container mx-auto py-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold mb-3">{program.name}</h1>
-        <p className={isArabic ? 'text-right' : 'text-left'}>{program.description}</p>
-        
-        <div className="flex flex-wrap justify-center gap-2 mt-4">
-          <Badge variant="secondary">
-            {isArabic ? 'المدة' : 'Duration'}: {program.duration_weeks} {isArabic ? 'أسابيع' : 'weeks'}
-          </Badge>
-          <Badge variant="outline">
-            {isArabic ? 'المستوى' : 'Level'}: {program.difficulty === 'beginner' ? (isArabic ? 'مبتدئ' : 'Beginner') : program.difficulty}
-          </Badge>
-          {program.coach && (
-            <Badge variant="default" className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {program.coach.user?.first_name || 'Coach'}
+      {/* Hero Banner */}
+      <div className="mb-8 p-6 bg-muted/30 rounded-xl">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Badge variant="secondary">{goalMap[program.goal]}</Badge>
+            <Badge>{program.training_level}</Badge>
+            <Badge>
+              <Clock className="h-3 w-3 mr-1 inline" />
+              {program.estimated_duration}
             </Badge>
-          )}
+            <Badge>
+              <Target className="h-3 w-3 mr-1 inline" />
+              {program.days_per_week}x {isArabic ? 'أسبوعياً' : 'Weekly'}
+            </Badge>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">{program.name}</h1>
+          <p className={isArabic ? 'text-right' : 'text-left'}>
+            {program.description}
+          </p>
+          <div className="mt-4 flex gap-3 flex-wrap">
+            <Button size="lg">
+              {isArabic ? 'أضف إلى خطتي' : 'Add to My Plan'}
+            </Button>
+            <Button variant="outline" size="lg">
+              {isArabic ? 'تصدير كـ PDF' : 'Export as PDF'}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Add to Plan Button */}
-      <div className="text-center mb-10">
-        <Button size="lg" onClick={handleAddToPlan} className="px-8 py-6 text-lg">
-          {isArabic ? 'أضف إلى خطتي' : 'Add to My Plan'}
-        </Button>
+      {/* Program Overview */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              {isArabic ? 'الهدف' : 'Goal'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>{goalMap[program.goal]}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              {isArabic ? 'المستوى' : 'Level'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {program.training_level === 'beginner'
+              ? isArabic
+                ? 'مبتدئ'
+                : 'Beginner'
+              : program.training_level}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              {isArabic ? 'المدة' : 'Duration'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>{program.estimated_duration}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Dumbbell className="h-4 w-4" />
+              {isArabic ? 'الأسبوع' : 'Per Week'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {program.days_per_week} {isArabic ? 'أيام' : 'Days'}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Sessions */}
-      <div className="space-y-8">
+      {/* Sessions (Days) */}
+      <div className="space-y-10">
         {program.sessions?.map((session: any) => (
-          <Card key={session.id} className="overflow-hidden">
-            <CardHeader className="bg-muted/50">
-              <CardTitle className={isArabic ? 'text-right' : 'text-left'}>
+          <div key={session.id} className="border rounded-lg overflow-hidden">
+            <div className="bg-muted/50 px-6 py-4">
+              <h2 className="text-xl font-bold">
                 {session.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
+              </h2>
+            </div>
+            <div className="p-6">
               <div className="grid gap-4">
                 {session.exercises?.map((ex: any) => (
                   <div
                     key={ex.id}
-                    className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/30"
+                    className="flex items-center gap-4 p-4 border rounded-lg"
                   >
-                    <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-primary flex-shrink-0" />
                     <div className="flex-1">
-                      <h3 className={isArabic ? 'text-right font-medium' : 'text-left font-medium'}>
-                        {ex.exercise_name}
-                      </h3>
-                      <p className={isArabic ? 'text-right text-sm text-muted-foreground mt-1' : 'text-left text-sm text-muted-foreground mt-1'}>
-                        {ex.sets} × {ex.reps} {isArabic ? 'تكرارات' : 'reps'}
-                      </p>
+                      <div className="font-medium">{ex.exercise_name}</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {ex.sets} × {ex.reps} • {ex.exercise.main_muscle}
+                      </div>
                     </div>
+                    <Badge variant="outline">{ex.exercise.equipment}</Badge>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Back to Library */}
-      <div className="mt-10 text-center">
+      <div className="mt-12 text-center">
         <Button variant="outline" asChild>
           <Link href={`/${lang}/programs/library`}>
             {isArabic ? 'العودة إلى خطط التمرين' : 'Back to Programs'}

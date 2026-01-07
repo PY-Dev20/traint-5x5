@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
+type Language = 'en' | 'ar' | 'fr';
+
 export async function generateMetadata({
   params,
 }: {
@@ -23,7 +25,7 @@ export async function generateMetadata({
         ? 'مؤسس ومدرب رئيسي — أب لـ 4، حاصل على ماجستير في التدريب الرياضي واللغة العربية'
         : lang === 'fr'
         ? 'Fondateur et entraîneur principal — Père de 4, diplômé en coaching sportif et en arabe classique'
-        : 'Founder & Head Coach — Father of 4, holds Master’s in Sports Coaching and Classical Arabic',
+        : 'Founder & Head Coach — Father of 4, holds Master\'s in Sports Coaching and Classical Arabic',
   };
 }
 
@@ -33,7 +35,8 @@ export default async function CoachPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const isArabic = lang === 'ar';
+  const currentLang = (lang as Language) || 'en';
+  const isArabic = currentLang === 'ar';
 
   // Bio content per language
   const bio = {
@@ -66,6 +69,14 @@ export default async function CoachPage({
     ],
   };
 
+  // Safe access to certifications array
+  const getCertifications = (): string[] => {
+    const certs = certifications[currentLang as keyof typeof certifications];
+    return Array.isArray(certs) ? certs : certifications.en;
+  };
+
+  const certs = getCertifications();
+
   return (
     <div className="container mx-auto py-12">
       <Card className="max-w-3xl mx-auto">
@@ -76,35 +87,44 @@ export default async function CoachPage({
           </Avatar>
           <div>
             <CardTitle className={isArabic ? 'text-right' : 'text-left'}>
-              {isArabic ? 'المدرب محمد' : lang === 'fr' ? 'Coach Mohammed' : 'Coach Mohammed'}
+              {isArabic ? 'المدرب محمد' : currentLang === 'fr' ? 'Coach Mohammed' : 'Coach Mohammed'}
             </CardTitle>
             <Badge variant="secondary" className="mt-2">
               {isArabic
                 ? 'مؤسس ومدرب رئيسي'
-                : lang === 'fr'
+                : currentLang === 'fr'
                 ? 'Fondateur & Entraîneur Principal'
                 : 'Founder & Head Coach'}
             </Badge>
             <p className="mt-3 text-muted-foreground">
-              {lang === 'ar' ? 'وُلد: 24 يوليو 1979' : lang === 'fr' ? 'Né : 24 juillet 1979' : 'Born: July 24, 1979'}
+              {currentLang === 'ar' ? 'وُلد: 24 يوليو 1979' : currentLang === 'fr' ? 'Né : 24 juillet 1979' : 'Born: July 24, 1979'}
             </p>
           </div>
         </CardHeader>
         <CardContent>
-          <p className={isArabic ? 'text-right' : 'text-left'}>{bio[lang as keyof typeof bio]}</p>
+          <p className={isArabic ? 'text-right' : 'text-left'}>
+            {bio[currentLang as keyof typeof bio] || bio.en}
+          </p>
 
           <h3 className="font-semibold mt-6 mb-3">
-            {isArabic ? 'الشهادات والمؤهلات' : lang === 'fr' ? 'Certifications' : 'Certifications & Education'}
+            {isArabic ? 'الشهادات والمؤهلات' : currentLang === 'fr' ? 'Certifications' : 'Certifications & Education'}
           </h3>
-          <ul className={isArabic ? 'text-right list-disc pr-5 space-y-1' : 'text-left list-disc pl-5 space-y-1'}>
-            {certifications[lang as keyof typeof certifications].map((cert, i) => (
-              <li key={i} className="text-muted-foreground">{cert}</li>
-            ))}
-          </ul>
+          
+          {certs.length > 0 ? (
+            <ul className={isArabic ? 'text-right list-disc pr-5 space-y-1' : 'text-left list-disc pl-5 space-y-1'}>
+              {certs.map((cert, i) => (
+                <li key={i} className="text-muted-foreground">{cert}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">
+              {isArabic ? 'جاري تحميل الشهادات...' : 'Loading certifications...'}
+            </p>
+          )}
 
           <div className="mt-8 flex justify-center">
             <Button size="lg">
-              {isArabic ? 'اتصل بالمدرّب' : lang === 'fr' ? 'Contacter le Coach' : 'Contact Coach'}
+              {isArabic ? 'اتصل بالمدرّب' : currentLang === 'fr' ? 'Contacter le Coach' : 'Contact Coach'}
             </Button>
           </div>
         </CardContent>
